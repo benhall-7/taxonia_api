@@ -1,23 +1,45 @@
+version: "3.9"
 services:
   db:
-    image: postgres:15
+    image: postgres:16
+    container_name: taxonia_db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydb
+      POSTGRES_DB: taxonia
+    volumes:
+      - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   app:
     build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
+    container_name: taxonia_service
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/taxonia
+      RUST_LOG: info
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    command: cargo run --release
+    restart: unless-stopped
+
+  # to be used for redis-based sessions, probably
+  redis:
+    image: redis:7
+    container_name: taxonia_redis
+    ports:
+      - "6379:6379"
 
 volumes:
-  pgdata:
+  pg_data:
