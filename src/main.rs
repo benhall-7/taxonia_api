@@ -1,22 +1,17 @@
 use dotenvy::dotenv;
 use poem::{
-    Error, IntoResponse, Result, Route, Server, http::StatusCode, listener::TcpListener, web::Json,
+    Route, Server, listener::TcpListener,
 };
-use poem_openapi::{OpenApi, OpenApiService, SecurityScheme, auth::Basic, payload::PlainText};
-use serde::Deserialize;
-use sqlx::PgPool;
-use std::{env, sync::Arc};
-use tokio::{signal, task::AbortHandle};
-use tower_sessions::{MemoryStore, SessionManagerLayer};
-use tracing_subscriber::FmtSubscriber;
+use poem_openapi::{OpenApiService, SecurityScheme, auth::Basic};
+use sqlx::postgres::PgPoolOptions;
 
-use crate::routes::auth::LoginRequest;
+use crate::config::Config;
+use crate::state::AppState;
 
-pub mod app_error;
 pub mod config;
-pub mod db;
 pub mod models;
 pub mod routes;
+pub mod state;
 
 #[derive(SecurityScheme)]
 #[oai(ty = "basic")]
@@ -24,17 +19,24 @@ struct MyBasicAuthorization(Basic);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv().ok();
+    // doesn't do anything in production, since env vars are included in the process
+    let _ = dotenv();
+    let config = Config::from_env()?;
+
     tracing_subscriber::fmt::init();
 
-    // Initialize database connection
-    let pool = db::init_pool().await?;
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&config.database_url)
+        .await?;
+    let redis_client = redis::Client::open(config.redis_url)?;
 
-    // Build OpenAPI services
+    let state = AppState::new(pool, redis_client);
+
     let api_service = OpenApiService::new(
         (
             routes::health_check::HealthCheckApi,
-            routes::auth::AuthApi { db: pool.clone() },
+            routes::auth::AuthApi { state: state.clone() },
         ),
         "Taxonia API",
         "1.0",
@@ -45,44 +47,12 @@ async fn main() -> anyhow::Result<()> {
     let swagger = api_service.swagger_ui();
 
     // Mount everything
-    let app = Route::new().nest("/api", api_service).nest("/", swagger);
+    let api = Route::new().nest("/api", api_service).nest("/", swagger);
 
     // Start the server
     Server::new(TcpListener::bind("0.0.0.0:3000"))
-        .run(app)
+        .run(api)
         .await?;
 
     Ok(())
 }
-
-// // TODO: reorganize routes and their parameters
-// #[derive(Deserialize)]
-// struct LoginForm {
-//     email: String,
-//     password: String,
-// }
-
-// async fn login(
-//     mut auth_session: AuthSession<Backend>,
-//     Json(creds): Json<LoginForm>,
-// ) -> impl IntoResponse {
-//     let user = auth_session
-//         .authenticate((creds.email, creds.password))
-//         .await
-//         .unwrap_or(None);
-
-//     if let Some(user) = user {
-//         auth_session.login(&user).await.unwrap();
-//         Json(serde_json::json!({ "message": "logged in" })).into_response()
-//     } else {
-//         (axum::http::StatusCode::UNAUTHORIZED, "Invalid credentials").into_response()
-//     }
-// }
-
-// async fn me(auth_session: AuthSession<Backend>) -> impl IntoResponse {
-//     if let Some(user) = auth_session.user {
-//         Json(serde_json::json!({ "email": user.email })).into_response()
-//     } else {
-//         (axum::http::StatusCode::UNAUTHORIZED, "Not logged in").into_response()
-//     }
-// }

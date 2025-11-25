@@ -1,45 +1,66 @@
-version: "3.9"
 services:
-  db:
-    image: postgres:16
-    container_name: taxonia_db
+  caddy:
+    image: caddy:latest
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: taxonia
-    volumes:
-      - pg_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
 
-  app:
-    build: .
-    container_name: taxonia_service
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      BIND_ADDR: 0.0.0.0:8080
+      APP_ENV: production
+      DATABASE_URL: postgres://taxonia:taxonia@db:5432/taxonia
+      REDIS_URL: redis://redis:6379
+    expose:
+      - "8080"
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://postgres:password@db:5432/taxonia
-      RUST_LOG: info
-    ports:
-      - "8080:8080"
-    volumes:
-      - .:/app
-    command: cargo run --release
-    restart: unless-stopped
+      redis:
+        condition: service_healthy
 
-  # to be used for redis-based sessions, probably
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: taxonia
+      POSTGRES_USER: taxonia
+      POSTGRES_PASSWORD: taxonia
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taxonia -d taxonia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7
-    container_name: taxonia_redis
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
-  pg_data:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
