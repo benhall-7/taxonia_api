@@ -1,10 +1,19 @@
 use std::env::var;
 
+#[derive(Debug, Clone)]
 pub struct Config {
     pub database_url: String,
     pub redis_url: String,
-    pub app_env: AppEnv,
     pub bind_addr: String,
+    pub base_url: String,
+
+    pub inat_client_id: String,
+    pub inat_client_secret: String,
+    pub inat_redirect_uri: String,
+    pub inat_base_url: String,
+
+    // optional vars
+    pub app_env: AppEnv,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,11 +32,22 @@ impl Config {
         Ok(Self {
             database_url: var("DATABASE_URL")?,
             redis_url: var("REDIS_URL")?,
+            bind_addr: var("BIND_ADDR")?,
+            base_url: var("BASE_URL")?,
+
+            inat_client_id: var("INAT_CLIENT_ID")?,
+            inat_client_secret: var("INAT_CLIENT_SECRET")?,
+            inat_redirect_uri: var("INAT_REDIRECT_URI")?,
+            inat_base_url: var("INAT_BASE_URL")?,
+
             app_env: var("APP_ENV")
                 .map(AppEnv::try_from)
                 .unwrap_or(Ok(AppEnv::Development))?,
-            bind_addr: var("BIND_ADDR").unwrap_or("127.0.0.1:8080".into()),
         })
+    }
+
+    pub fn is_prod(&self) -> bool {
+        self.app_env == AppEnv::Production
     }
 }
 

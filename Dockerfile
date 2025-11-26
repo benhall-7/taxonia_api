@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -u 10001 appuser
 USER appuser
 
-COPY --from=builder /app/target/release/taxonia_service .
+COPY --from=builder /app/target/release/taxonia_api .
 COPY --from=builder /app/migrations ./migrations
 
 ENV RUST_LOG=info \
@@ -27,4 +27,4 @@ ENV RUST_LOG=info \
     BIND_ADDR=0.0.0.0:8080
 
 EXPOSE 8080
-CMD ["./taxonia_service"]
+CMD ["./taxonia_api"]
