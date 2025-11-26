@@ -1,2 +1,2 @@
-pub mod inat;
 pub mod rand;
+pub mod auth;

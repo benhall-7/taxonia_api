@@ -1,7 +1,11 @@
 use dotenvy::dotenv;
+use poem::EndpointExt;
+use poem::middleware::CookieJarManager;
 use poem::{Route, Server, listener::TcpListener};
 use poem_openapi::OpenApiService;
+use reqwest::StatusCode;
 use sqlx::postgres::PgPoolOptions;
+use tracing::error;
 use tracing_subscriber::filter::EnvFilter;
 
 use crate::config::{AppEnv, Config};
@@ -9,11 +13,17 @@ use crate::state::AppState;
 
 pub mod config;
 pub mod models;
+pub mod repos;
 pub mod routes;
-pub mod state;
 pub mod services;
-pub mod auth_repo;
-pub mod session;
+pub mod state;
+pub mod session_store;
+pub mod clients;
+
+pub fn internal_error<E: std::fmt::Display>(context: &'static str, err: E) -> poem::Error {
+    error!("{context}: {err}");
+    poem::Error::from_status(StatusCode::INTERNAL_SERVER_ERROR)
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -53,7 +63,8 @@ async fn main() -> anyhow::Result<()> {
     // Mount everything
     let api = Route::new()
         .nest("/api", api_service)
-        .nest("/", swagger);
+        .nest("/", swagger)
+        .with(CookieJarManager::new());
 
     Server::new(TcpListener::bind(config.bind_addr))
         .run(api)

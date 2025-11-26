@@ -1,13 +1,12 @@
-use crate::services::inat::InatUser;
-use crate::services::inat::TokenWithExpiry;
-use reqwest::StatusCode;
-use sqlx::{PgPool};
+use crate::clients::inat::{InatUser, TokenWithExpiry};
+use poem::http::StatusCode;
+use sqlx::PgPool;
 
-pub struct AuthRepo {
+pub struct UserRepo {
     pool: PgPool,
 }
 
-impl AuthRepo {
+impl UserRepo {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -34,7 +33,7 @@ impl AuthRepo {
             self.pool.begin().await.map_err(|_| {
                 poem::Error::from_status(poem::http::StatusCode::INTERNAL_SERVER_ERROR)
             })?;
-        
+
         // 1: check auth_identity
         let existing: Option<ExistingIdentity> = sqlx::query_as(
             r#"
