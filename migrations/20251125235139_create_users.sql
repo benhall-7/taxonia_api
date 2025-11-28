@@ -1,5 +1,3 @@
--- Add migration script here
-
 -- No specific login method required in this table
 CREATE TABLE users(
     id bigserial PRIMARY KEY,

@@ -22,16 +22,23 @@ pub struct InatUser {
     pub email: Option<String>,
 }
 
-pub struct InatClient;
+pub struct InatClient {
+    client: Client,
+}
 
 impl InatClient {
-    // 1) code -> OAuth access token
+    pub fn new() -> Self {
+        Self {
+            client: Client::new(),
+        }
+    }
+
+    // use code from iNaturalist to get OAuth access token
     pub async fn exchange_code_for_token(
         &self,
         cfg: &Config,
         code: &str,
     ) -> Result<TokenWithExpiry> {
-        let client = Client::new();
         let url = format!("{}/oauth/token", cfg.inat_base_url);
 
         let params = [
@@ -42,7 +49,8 @@ impl InatClient {
             ("grant_type", "authorization_code"),
         ];
 
-        let resp = client
+        let resp = self
+            .client
             .post(url)
             .form(&params)
             .send()
@@ -66,16 +74,16 @@ impl InatClient {
         })
     }
 
-    // 2) OAuth access token -> JWT api_token
+    // use OAuth access token to get a JWT api_token
     pub async fn exchange_access_for_api_token(
         &self,
         cfg: &Config,
         access_token: &str,
     ) -> Result<String> {
-        let client = Client::new();
         let url = format!("{}/users/api_token", cfg.inat_base_url);
 
-        let resp = client
+        let resp = self
+            .client
             .get(url)
             .bearer_auth(access_token)
             .send()
@@ -86,12 +94,12 @@ impl InatClient {
         Ok(body.api_token)
     }
 
-    /// JWT api_token -> user info
+    /// use JWT api_token to get user info
     pub async fn fetch_current_user(&self, api_token: &str) -> Result<InatUser> {
-        let client = Client::new();
         let url = format!("{}/users/me", INAT_API_BASE);
 
-        let resp = client
+        let resp = self
+            .client
             .get(url)
             .bearer_auth(api_token)
             .send()

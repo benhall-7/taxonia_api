@@ -11,14 +11,14 @@ use tracing_subscriber::filter::EnvFilter;
 use crate::config::{AppEnv, Config};
 use crate::state::AppState;
 
+pub mod clients;
 pub mod config;
 pub mod models;
 pub mod repos;
 pub mod routes;
 pub mod services;
-pub mod state;
 pub mod session_store;
-pub mod clients;
+pub mod state;
 
 pub fn internal_error<E: std::fmt::Display>(context: &'static str, err: E) -> poem::Error {
     error!("{context}: {err}");
@@ -49,6 +49,9 @@ async fn main() -> anyhow::Result<()> {
                 state: state.clone(),
             },
             routes::auth::AuthApi {
+                state: state.clone(),
+            },
+            routes::quiz::QuizApi {
                 state: state.clone(),
             },
         ),

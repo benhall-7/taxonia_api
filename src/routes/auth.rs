@@ -63,7 +63,6 @@ impl AuthApi {
         state: String,
     ) -> poem::Result<payload::Response<()>> {
         let cfg = &self.state.config;
-
         let session_repo = SessionStore::new(self.state.redis.clone());
 
         // 1: Validate state (consume only)
@@ -75,20 +74,20 @@ impl AuthApi {
             return Err(poem::Error::from_status(StatusCode::BAD_REQUEST));
         }
 
-        // 2: code -> OAuth token
-        let inat_client = InatClient {};
+        // 2: get OAuth token
+        let inat_client = InatClient::new();
         let token_with_exp = inat_client
             .exchange_code_for_token(&self.state.config, &code)
             .await
             .map_err(|e| internal_error("exchange_code_for_token failed", e))?;
 
-        // 3: OAuth token -> JWT api_token
+        // 3: get JWT api_token
         let api_token = inat_client
             .exchange_access_for_api_token(&self.state.config, &token_with_exp.access_token)
             .await
             .map_err(|e| internal_error("exchange_access_for_api_token failed", e))?;
 
-        // 4: JWT -> iNat user profile
+        // 4: get iNat user profile
         let inat_user = inat_client
             .fetch_current_user(&api_token)
             .await
