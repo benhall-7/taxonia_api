@@ -19,8 +19,8 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -u 10001 appuser
 USER appuser
 
-COPY --from=builder /app/target/release/taxonia_api .
-COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /api/target/release/taxonia_api .
+COPY --from=builder /api/migrations ./migrations
 
 ENV RUST_LOG=info \
     APP_ENV=production \
