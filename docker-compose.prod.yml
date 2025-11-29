@@ -26,6 +26,10 @@ services:
     expose:
       - "8080"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 500M
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +50,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 800M
 
   redis:
     image: redis:7
@@ -58,6 +66,10 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 100M
 
 volumes:
   postgres_data:
