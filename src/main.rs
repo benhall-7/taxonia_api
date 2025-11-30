@@ -62,11 +62,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Swagger UI for testing & docs
     let swagger = api_service.swagger_ui();
+    let spec = api_service.spec_endpoint();
 
     // Mount everything
     let api = Route::new()
         .nest("/api", api_service)
         .nest("/", swagger)
+        .nest("/spec.json", spec)
         .with(CookieJarManager::new());
 
     Server::new(TcpListener::bind(config.bind_addr))
