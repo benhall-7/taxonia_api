@@ -67,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     // Mount everything
     let api = Route::new()
         .nest("/api", api_service)
-        .nest("/", swagger)
+        .nest("/spec", swagger)
         .nest("/spec.json", spec)
         .with(CookieJarManager::new());
 
