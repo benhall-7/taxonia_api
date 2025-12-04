@@ -123,7 +123,7 @@ impl AuthApi {
     }
 
     /// Get current logged-in user
-    #[oai(path = "/auth/me", method = "get")]
+    #[oai(path = "/me", method = "get")]
     async fn me(&self, jar: &CookieJar) -> poem::Result<Json<MeResponse>> {
         let user = services::auth::get_current_user(&self.state, jar).await?;
         Ok(Json(MeResponse::from(user)))

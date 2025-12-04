@@ -1,5 +1,5 @@
-use poem_openapi::{Object, OpenApi};
 use poem_openapi::payload::Json;
+use poem_openapi::{Object, OpenApi};
 use redis::AsyncCommands;
 use serde::Serialize;
 use tokio::join;

@@ -1,6 +1,6 @@
 use dotenvy::dotenv;
 use poem::EndpointExt;
-use poem::middleware::CookieJarManager;
+use poem::middleware::{CookieJarManager, Cors};
 use poem::{Route, Server, listener::TcpListener};
 use poem_openapi::OpenApiService;
 use reqwest::StatusCode;
@@ -43,6 +43,12 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState::new(pool, redis_client, state_config);
 
+    let cors = Cors::new()
+        .allow_credentials(true)
+        .allow_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+        .allow_headers(vec!["Content-Type", "Authorization"])
+        .allow_origins(config.allowed_origins);
+
     let api_service = OpenApiService::new(
         (
             routes::health_check::HealthCheckApi {
@@ -58,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
         "Taxonia API",
         "1.0",
     )
-    .server(format!("{}/api", config.bind_addr));
+    .server(format!("{}", config.bind_addr));
 
     // Swagger UI for testing & docs
     let swagger = api_service.swagger_ui();
@@ -66,10 +72,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Mount everything
     let api = Route::new()
-        .nest("/api", api_service)
+        .nest("/", api_service)
         .nest("/spec", swagger)
         .nest("/spec.json", spec)
-        .with(CookieJarManager::new());
+        .with(CookieJarManager::new())
+        .with(cors);
 
     Server::new(TcpListener::bind(config.bind_addr))
         .run(api)

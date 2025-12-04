@@ -2,6 +2,7 @@ use std::env::var;
 
 #[derive(Debug, Clone)]
 pub struct Config {
+    pub allowed_origins: Vec<String>,
     pub database_url: String,
     pub redis_url: String,
     pub bind_addr: String,
@@ -30,6 +31,11 @@ pub enum ConfigError {
 impl Config {
     pub fn from_env() -> anyhow::Result<Self> {
         Ok(Self {
+            allowed_origins: std::env::var("ALLOWED_ORIGINS")?
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>(),
             database_url: var("DATABASE_URL")?,
             redis_url: var("REDIS_URL")?,
             bind_addr: var("BIND_ADDR")?,
