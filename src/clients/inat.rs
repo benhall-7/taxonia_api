@@ -3,6 +3,7 @@ use anyhow::{Result, anyhow};
 use chrono::{DateTime, Duration, Utc};
 use reqwest::Client;
 use serde::Deserialize;
+use tracing::{debug, info};
 
 static INAT_API_BASE: &str = "https://api.inaturalist.org/v1";
 

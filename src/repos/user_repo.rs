@@ -24,7 +24,7 @@ impl UserRepo {
         let provider = "inat";
         let provider_user_id = inat_user_id.to_string();
 
-        #[derive(sqlx::FromRow)]
+        #[derive(Debug, sqlx::FromRow)]
         struct ExistingIdentity {
             user_id: i64,
         }
@@ -39,7 +39,7 @@ impl UserRepo {
             r#"
             SELECT user_id
             FROM auth_identities
-            WHERE provider = '$1' AND provider_user_id = $2
+            WHERE provider = CAST($1 as auth_provider) AND provider_user_id = $2
             "#,
         )
         .bind(&provider)
@@ -48,6 +48,7 @@ impl UserRepo {
         .await
         .map_err(|_| poem::Error::from_status(poem::http::StatusCode::INTERNAL_SERVER_ERROR))?;
 
+        println!("Existing user: {:?}", &existing);
         // 2: update or insert users
         let user_id: i64 = if let Some(row) = existing {
             // update last_used_at
@@ -55,9 +56,10 @@ impl UserRepo {
                 r#"
                 UPDATE auth_identities
                 SET last_used_at = now()
-                WHERE provider = 'inat' AND provider_user_id = $1
+                WHERE provider = CAST($1 as auth_provider) AND provider_user_id = $2
                 "#,
             )
+            .bind(provider)
             .bind(&provider_user_id)
             .execute(&mut *tx)
             .await
@@ -103,11 +105,12 @@ impl UserRepo {
                     user_id, provider, provider_user_id, access_token, refresh_token, token_expires_at
                 )
                 VALUES (
-                    $1, 'inat', $2, $3, $4, $5
+                    $1, CAST($2 as auth_provider), $3, $4, $5, $6
                 )
                 "#,
             )
             .bind(new_user_id)
+            .bind(provider)
             .bind(&provider_user_id)
             .bind(&token.access_token)
             .bind(&token.refresh_token)

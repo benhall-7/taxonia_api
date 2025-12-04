@@ -12,6 +12,7 @@ pub struct Config {
     pub inat_client_secret: String,
     pub inat_redirect_uri: String,
     pub inat_base_url: String,
+    pub app_redirect_uri: String,
 
     // optional vars
     pub app_env: AppEnv,
@@ -45,6 +46,7 @@ impl Config {
             inat_client_secret: var("INAT_CLIENT_SECRET")?,
             inat_redirect_uri: var("INAT_REDIRECT_URI")?,
             inat_base_url: var("INAT_BASE_URL")?,
+            app_redirect_uri: var("APP_REDIRECT_URI")?,
 
             app_env: var("APP_ENV")
                 .map(AppEnv::try_from)

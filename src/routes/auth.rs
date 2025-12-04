@@ -4,14 +4,17 @@ use crate::{
 };
 use poem::{
     http::StatusCode,
-    web::cookie::{Cookie, CookieJar, SameSite},
+    web::{
+        Query,
+        cookie::{Cookie, CookieJar, SameSite},
+    },
 };
 use poem_openapi::{
     Object, OpenApi,
     payload::{self, Json},
 };
 use rand::{Rng, distr::Alphanumeric};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::clients::inat::InatClient;
 use crate::repos::user_repo::UserRepo;
@@ -20,6 +23,12 @@ use crate::state::AppState;
 
 pub struct AuthApi {
     pub state: AppState,
+}
+
+#[derive(Object, Deserialize)]
+struct CallbackParams {
+    code: String,
+    state: String,
 }
 
 #[OpenApi(prefix_path = "/auth")]
@@ -45,10 +54,15 @@ impl AuthApi {
         let redirect = urlencoding::encode(&cfg.inat_redirect_uri);
 
         let url = format!(
-            "{base}/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope=read",
+            "{base}/oauth/authorize?client_id={client_id}\
+                &redirect_uri={redirect_uri}\
+                &state={state}\
+                &response_type=code\
+                &scope=write",
             base = cfg.inat_base_url,
             client_id = cfg.inat_client_id,
             redirect_uri = redirect,
+            state = state
         );
 
         Ok(Json(LoginUrlResponse { url }))
@@ -59,9 +73,9 @@ impl AuthApi {
     async fn callback(
         &self,
         jar: &CookieJar,
-        code: String,
-        state: String,
+        Query(params): Query<CallbackParams>,
     ) -> poem::Result<payload::Response<()>> {
+        let CallbackParams { code, state } = params;
         let cfg = &self.state.config;
         let session_repo = SessionStore::new(self.state.redis.clone());
 
@@ -117,7 +131,7 @@ impl AuthApi {
 
         let resp = payload::Response::new(())
             .status(StatusCode::FOUND)
-            .header("Location", "https://taxonia.app/auth/callback");
+            .header("Location", cfg.app_redirect_uri.clone());
 
         Ok(resp)
     }

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde_json::Value;
-use sqlx::{PgPool, FromRow};
+use sqlx::{FromRow, PgPool};
 
 #[derive(Clone)]
 pub struct QuizRepo {
