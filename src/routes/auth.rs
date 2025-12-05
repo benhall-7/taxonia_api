@@ -4,17 +4,15 @@ use crate::{
 };
 use poem::{
     http::StatusCode,
-    web::{
-        Query,
-        cookie::{Cookie, CookieJar, SameSite},
-    },
+    web::cookie::{Cookie, CookieJar, SameSite},
 };
 use poem_openapi::{
     Object, OpenApi,
+    param::Query,
     payload::{self, Json},
 };
 use rand::{Rng, distr::Alphanumeric};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::clients::inat::InatClient;
 use crate::repos::user_repo::UserRepo;
@@ -23,12 +21,6 @@ use crate::state::AppState;
 
 pub struct AuthApi {
     pub state: AppState,
-}
-
-#[derive(Object, Deserialize)]
-struct CallbackParams {
-    code: String,
-    state: String,
 }
 
 #[OpenApi(prefix_path = "/auth")]
@@ -73,9 +65,9 @@ impl AuthApi {
     async fn callback(
         &self,
         jar: &CookieJar,
-        Query(params): Query<CallbackParams>,
+        code: Query<String>,
+        state: Query<String>,
     ) -> poem::Result<payload::Response<()>> {
-        let CallbackParams { code, state } = params;
         let cfg = &self.state.config;
         let session_repo = SessionStore::new(self.state.redis.clone());
 

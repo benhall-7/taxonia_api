@@ -1,8 +1,6 @@
 use chrono::{DateTime, Utc};
-use poem::web::Query;
 use poem::web::cookie::CookieJar;
-use poem_openapi::{Object, OpenApi, payload::Json};
-use serde::Deserialize;
+use poem_openapi::{Object, OpenApi, param::Query, payload::Json};
 use serde_json::Value;
 
 use crate::internal_error;
@@ -32,14 +30,6 @@ struct SaveQuizResultRequest {
 #[derive(Object, Debug)]
 struct SaveQuizResultResponse {
     id: i64,
-}
-
-#[derive(Object, Deserialize, Debug)]
-struct QuizResultRequest {
-    #[oai(default = "default_limit")]
-    limit: i64,
-    #[oai(default = "default_offset")]
-    offset: i64,
 }
 
 #[derive(Object, Debug)]
@@ -95,13 +85,12 @@ impl QuizApi {
     async fn list_results(
         &self,
         jar: &CookieJar,
-        Query(request): Query<QuizResultRequest>,
+        #[oai(default = "default_limit")] limit: Query<i64>,
+        #[oai(default = "default_offset")] offset: Query<i64>,
     ) -> poem::Result<Json<ListQuizResultsResponse>> {
-        let QuizResultRequest { limit, offset } = request;
+        let limit = limit.0.clamp(1, 100);
+        let offset = offset.0.max(0);
         let user = get_current_user(&self.state, jar).await?;
-
-        let limit = limit.clamp(1, 100);
-        let offset = offset.max(0);
 
         let repo = QuizRepo::new(self.state.db.clone());
         let rows = repo
