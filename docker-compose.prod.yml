@@ -35,11 +35,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-  command: >
-    sh -c "
-      sqlx migrate run &&
-      ./taxonia_api
-    "
+    command: >
+      sh -c "
+        sqlx migrate run &&
+        ./taxonia_api
+      "
 
   db:
     image: postgres:16
